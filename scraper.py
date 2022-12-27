@@ -10,10 +10,12 @@ def save_spreadsheet(filename, prices):
     wb = openpyxl.load_workbook(filename)
     sheet = wb.active
 
+    # adds title row
     title_row = ["URL", "Name", "MSRP", "MAP"]
     for i in range(1, len(title_row) + 1):
         sheet.cell(row = 1, column = i).value = title_row[i - 1]
 
+    # iterates over items and sets the row correctly
     row_num = 2
     for url, item in prices.items():
         row = [url, item["name"], item["msrp"], item["map"]]
@@ -22,9 +24,12 @@ def save_spreadsheet(filename, prices):
 
         row_num += 1
 
+    # removes extra rows, as this function reformats the whole sheet
     sheet.delete_rows(row_num, sheet.max_row)
 
+    # save sheet
     wb.save(filename)
+    # TODO: return list of changed items
 
 # returns list of urls from spreadsheet
 # errors if there's no data to get
@@ -40,18 +45,22 @@ def get_urls(sheet):
 
     return urls
 
+# gets prices from existing spreadsheet
 def get_prices(sheet):
     prices = {}
 
-    for row in range(2, sheet.max_row):
+    # iterate over all rows that aren't the title row
+    for row in range(2, sheet.max_row + 1):
         url = sheet.cell(row = row, column = 1).value
-        name = sheet.cell(row = row, column = 2).value
-        msrp = sheet.cell(row = row, column = 3).value
-        map = sheet.cell(row = row, column = 4).value
+        if not url:
+            continue
+        name = sheet.cell(row = row, column = 2).value or ""
+        msrp = sheet.cell(row = row, column = 3).value or 0.
+        map = sheet.cell(row = row, column = 4).value or 0.
         prices[url] = {
             "name": name,
-            "msrp": msrp,
-            "map": map,
+            "msrp": float(msrp),
+            "map": float(map),
         }
 
     return prices
@@ -60,6 +69,7 @@ def get_prices(sheet):
 def parse_float(str):
     return float("".join([chr for chr in str if chr.isdigit() or chr == "."]))
 
+# creates listing with checks for missing values
 def make_listing(name_result, msrp_result, map_result):
     listing = {
         "name": "",
@@ -79,8 +89,9 @@ def make_listing(name_result, msrp_result, map_result):
 
 def scrape_urls(urls):
     prices = {}
+    # regex to match different types of pages
     product_page = re.compile(r"https://kawaius.com/product/.*")
-    store_page = re.compile(r"https://store.kawaius.com/products/.*")
+    store_page = re.compile(r"https://store.kawaius.com/p(roducts)?/.*")
 
     for url in urls:
         html = requests.get(url).content
@@ -109,6 +120,7 @@ def scrape_urls(urls):
 
                 if color:
                     color = color.text
+                    # only get MAP from black model
                     if re.search(r"[bB]lack", color):
                         button = box.find("a").find("span")
                         if button:
@@ -125,14 +137,13 @@ def scrape_urls(urls):
 
 
 if __name__ == "__main__":
+    # default values
     wb = None
     sheet = None
     filename = "data.xlsx"
 
-    if len(sys.argv) == 1:
-        wb = openpyxl.Workbook()
-        sheet = wb.active
-    elif len(sys.argv) == 2:
+    # only takes one argument: a filename for an Excel spreadsheet
+    if len(sys.argv) == 2:
         arg = sys.argv[1].strip()
         if exists(arg) and re.match(r".*\.xlsx", arg):
             wb = openpyxl.load_workbook(arg)
@@ -141,7 +152,7 @@ if __name__ == "__main__":
         else:
             raise Exception("Invalid filename passed as argument")
     else:
-        raise Exception("Too many arguments")
+        raise Exception(f"Expected 1 argument, received {len(sys.argv) - 1}")
 
     urls = get_urls(sheet)
     old_prices = get_prices(sheet)
@@ -149,11 +160,16 @@ if __name__ == "__main__":
     changed_prices = {}
     save_spreadsheet(filename, new_prices)
 
+    # compares items in spreadsheet and ones that were just scraped
     for url in urls:
         if old_prices.get(url) != new_prices.get(url):
             changed_prices[url] = new_prices[url]
 
-    print("{} items updated\n".format(len(changed_prices)))
+    # display changed items
+    print("{} item(s) updated\n".format(len(changed_prices)))
     for url, data in changed_prices.items():
-        print("{}: {}\nMSRP: {}\nMAP: {}\n".format(data["name"], url, data["msrp"], data["map"]))
+        name = data["name"]
+        if name != "":
+            name += ": "
+        print("{}{}\nMSRP: {}\nMAP: {}\n".format(name, url, data["msrp"], data["map"]))
 
