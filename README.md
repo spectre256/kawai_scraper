@@ -8,7 +8,9 @@ then updates spreadsheet accordingly.
 
 ## Install
 
-First, install the dependencies.
+To begin, make sure to have the latest
+versions of python3 and pip installed.
+Once you've done that, install the dependencies.
 
 ```
 $ pip install beautifulsoup4 openpyxl
