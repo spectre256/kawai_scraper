@@ -3,7 +3,7 @@
 ## Description
 
 Simple CLI web scraper for Kawai US website product pages.
-It gets prices based on urls in spreadsheet,
+It gets prices based on URLs in spreadsheet,
 then updates spreadsheet accordingly.
 
 ## Install
