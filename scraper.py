@@ -22,6 +22,8 @@ def save_spreadsheet(filename, prices):
 
         row_num += 1
 
+    sheet.delete_rows(row_num, sheet.max_row)
+
     wb.save(filename)
 
 # returns list of urls from spreadsheet
