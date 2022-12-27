@@ -10,47 +10,48 @@ urls = [
 def parse_float(str):
     return "".join([chr for chr in str if chr.isdigit() or chr == "."])
 
+def make_listing(name_result, msrp_result, map_result):
+    listing = {
+        "name": "",
+        "msrp": 0,
+        "map": 0
+    }
+
+    if name_result:
+        name = name_result.text.strip()
+        listing["name"] = name
+    if msrp_result:
+        listing["msrp"] = parse_float(msrp_result.text)
+    if map_result:
+        listing["map"] = parse_float(map_result.text)
+
+    return listing
+
 def parse_urls(urls):
     prices = {}
+    product_page = re.compile(r"https://kawaius.com/product/.*")
+    store_page = re.compile(r"https://store.kawaius.com/products/.*")
+
     for url in urls:
         html = requests.get(url).content
         tree = bs(html, "lxml")
-        msrp = 0
-        map = 0
-        name = ""
 
-        store_page = re.compile(r"https://store.kawaius.com/products/.*")
-        product_page = re.compile(r"https://kawaius.com/product/.*")
-
+        # scrape web page based on url; different pages have different styles
         if re.match(product_page, url):
-            msrp = tree.find("strong", re.compile(r"MSRP: \$\d+"))
-            if msrp:
-                msrp = parse_float(msrp.text)
-            else:
-                msrp = 0
+            name_result = tree.find("h1", class_ = "product-title product_title entry-title")
 
-            listing = {
-                "name": name,
-                "map": map,
-                "msrp": float(msrp),
-            } 
-
-            prices[url] = listing
-
+            # finds first span tag with "MSRP" in it inside a strong tag
+            for tag in tree.find_all("strong"):
+                if tag.find("span", string = re.compile("MSRP")):
+                    # these pages don't have a MAP
+                    prices[url] = make_listing(name_result, tag, None)
+                    break
         elif re.match(store_page, url):
-            msrp = tree.find("span", class_ = "prce")
-            sale_price = tree.find("span", class_ = "sale_price")
+            name_result = tree.find("div", class_ = "titles")
+            msrp_result = tree.find("span", class_ = "prce")
+            map_result = tree.find("span", class_ = "sale_price")
 
-            msrp = parse_float(msrp.text)
-            sale_price = parse_float(sale_price.text)
-
-            listing = {
-                "name": name,
-                "map": float(sale_price),
-                "msrp": float(msrp)
-            }
-
-            prices[url] = listing
+            prices[url] = make_listing(name_result, msrp_result, map_result)
 
     return prices
 
