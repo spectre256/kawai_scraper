@@ -13,7 +13,7 @@ versions of python3 and pip installed.
 Once you've done that, install the dependencies.
 
 ```
-$ pip install beautifulsoup4 openpyxl
+$ pip install requests beautifulsoup4 lxml openpyxl
 ```
 
 Next, clone this repository and enter its directory
